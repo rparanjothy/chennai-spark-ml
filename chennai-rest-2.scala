@@ -124,3 +124,10 @@ val testFeatures=va.transform(tnF)
 
 val Y=BModel.transform(testFeatures)
 
+// 
+cusinePredicted.join(f,cusinePredicted.col("prediction")===f.col("prediction")).select('name).distinct.show
+
+def showSim(name:String, ty:String)={
+    val f=cusinePredicted.filter('name===name).filter(trim('c)===ty).select('prediction) 
+    cusinePredicted.join(f,cusinePredicted.col("prediction")===f.col("prediction")).select('name).distinct.show
+}
