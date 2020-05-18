@@ -278,3 +278,10 @@ x.show
 def showRest(p:Int,x:org.apache.spark.sql.DataFrame)=x.filter('prediction===p).show(500)
 
 showRest(1,cusinePredicted) 
+
+// evalucate 
+import org.apache.spark.ml.evaluation.ClusteringEvaluator
+val ee=new ClusteringEvaluator()
+ee.setFeaturesCol("cusineF").setPredictionCol("prediction")
+ee.evaluate(cuisineClusters)
+res94: Double = 0.16987298070930856
