@@ -44,7 +44,13 @@ cuisineEncoded.show
 // indexing name
 val siName = new StringIndexer().setInputCol("name").setOutputCol("nameIndex")
 // get name Index
- val cuisineE1=siName.fit(cuisineEncoded).transform(cuisineEncoded)
+
+//  we need this so we can use this against test data for predictions.
+val cuisineE1NameModel=siName.fit(cuisineEncoded)
+
+
+
+val cuisineE1=siName.fit(cuisineEncoded).transform(cuisineEncoded)
  
 
 // get vector for name Index
@@ -98,5 +104,23 @@ ee.setFeaturesCol("cusineF").setPredictionCol("prediction")
 ee.evaluate(cuisineClusters)
 
 // sample prediction
-val tData=Seq(("Bujji Biriyani","Telugu,Tamil,Biriyani,Pizza")).toDF("name","Cuisine")
+val tData=Seq(("Sukkubhai Biriyani","Biryani")).toDF("name","c")
 // repeat till u have vecs
+
+
+// index Cuisine
+val tci=restCuisineModel.transform(tData)
+val tcF=cuisineOHE.transform(tci)
+
+// index name
+// cuisineE1NameModel.setHandleInvalid("keep") 
+
+val tni=cuisineE1NameModel.transform(tcF)
+
+// feature name, feature cuisine
+val tnF=cuisineOHEName.transform(tni)
+
+val testFeatures=va.transform(tnF)
+
+val Y=BModel.transform(testFeatures)
+
