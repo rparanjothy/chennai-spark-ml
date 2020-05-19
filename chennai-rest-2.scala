@@ -131,3 +131,7 @@ def showSim(name:String, ty:String)={
     val f=cusinePredicted.filter('name===name).filter(trim('c)===ty).select('prediction) 
     cusinePredicted.join(f,cusinePredicted.col("prediction")===f.col("prediction")).select('name).distinct.show
 }
+
+
+// na.drop any -> rows with null/nan
+x1.na.drop("any",Seq("p","r"))
