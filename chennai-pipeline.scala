@@ -4,6 +4,7 @@ import org.apache.spark.ml.PipelineModel
 import org.apache.spark.ml.feature.StringIndexer 
 import org.apache.spark.ml.feature.VectorAssembler  
 import org.apache.spark.ml.clustering.KMeans
+import org.apache.spark.ml.feature.StandardScaler
 
 // define your transforms and estimators
 // rename name and price
@@ -20,10 +21,16 @@ val x3=x2.select(trim('name).as("n"),trim('Address).as("a"),trim('Location).as("
 val locationIDX = new StringIndexer().setInputCol("l").setOutputCol("lIndex")  
 // assemble
 val va=new VectorAssembler().setInputCols(Array("lIndex","p","r")).setOutputCol("features") 
+// standardize-test
+val stdz=new StandardScaler().setInputCol("features").setOutputCol("scaledFeatures").setWithStd(true).setWithMean(false)
 // algo
 val k=new KMeans().setK(500).setFeaturesCol("features")
+// withSTD
+
+val k=new KMeans().setK(500).setFeaturesCol("scaledFeatures")
+
 // build a pipeline
-val pipe=new Pipeline().setStages(Array(locationIDX,va,k))    
+val pipe=new Pipeline().setStages(Array(locationIDX,va,stdz,k))    
 // save the pipeline
 pipe.write.overwrite().save("./pipeline/chennai-food")
 // load pipe
@@ -49,10 +56,17 @@ def buildTrain(ct:Int,data:org.apache.spark.sql.DataFrame):org.apache.spark.sql.
     val locationIDX = new StringIndexer().setInputCol("l").setOutputCol("lIndex")  
     // assemble
     val va=new VectorAssembler().setInputCols(Array("lIndex","p","r")).setOutputCol("features") 
+    
+    // standardize-test
+    val stdz=new StandardScaler().setInputCol("features").setOutputCol("scaledFeatures").setWithStd(true).setWithMean(false)
+
     // algo
-    val k=new KMeans().setK(ct).setFeaturesCol("features")
+// val k=new KMeans().setK(ct).setFeaturesCol("features")
+    val k=new KMeans().setK(ct).setFeaturesCol("scaledFeatures")
+
     // build a pipeline
-    val pipe=new Pipeline().setStages(Array(locationIDX,va,k))
+    // val pipe=new Pipeline().setStages(Array(locationIDX,va,k))
+    val pipe=new Pipeline().setStages(Array(locationIDX,va,stdz,k))
     val model=pipe.fit(x3)
     val xr=model.transform(x3)
     xr
