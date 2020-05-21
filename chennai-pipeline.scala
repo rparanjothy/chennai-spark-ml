@@ -5,11 +5,15 @@ import org.apache.spark.ml.feature.StringIndexer
 import org.apache.spark.ml.feature.VectorAssembler  
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.feature.StandardScaler
+import org.apache.spark.ml.feature.Normalizer
+
 
 // define your transforms and estimators
 // rename name and price
 
-val chennai=spark.read.format("csv").option("inferSchema","true").option("header","true").load("./data.csv")
+
+
+val chennai=spark.read.format("csv").option("inferSchema","true").option("header","true").load("/home/rparanjo/chennai/data.csv")
 
 val x=chennai.drop($"Zomato URL").withColumnRenamed("Price for 2","p").withColumnRenamed("Name of Restaurant","name").withColumnRenamed("Ratings","r")          
 val x1=x.select('name,'Address,'Location,'p.cast("double"),'r.cast("double"))        
@@ -23,6 +27,9 @@ val locationIDX = new StringIndexer().setInputCol("l").setOutputCol("lIndex")
 val va=new VectorAssembler().setInputCols(Array("lIndex","p","r")).setOutputCol("features") 
 // standardize-test
 val stdz=new StandardScaler().setInputCol("features").setOutputCol("scaledFeatures").setWithStd(true).setWithMean(false)
+
+val normalizer = new Normalizer().setInputCol("features").setOutputCol("normFeatures").setP(1.0)
+
 // algo
 val k=new KMeans().setK(500).setFeaturesCol("features")
 // withSTD
@@ -48,7 +55,8 @@ val xr=model.transform(x3)
 def showRest(p:Int,x:org.apache.spark.sql.DataFrame)=x.filter('prediction===p).orderBy('Ratings.desc).show(500,false) 
 
 def showClusters(r:org.apache.spark.sql.DataFrame)=r.groupBy('prediction,'p,'r,'l).count.orderBy('count.desc).show(200,false)    
-def showClustersByP(r:org.apache.spark.sql.DataFrame)=r.groupBy('prediction,'p,'r,'l).count.orderBy('prediction).show(100,false)    
+
+def showClustersByP(r:org.apache.spark.sql.DataFrame)=r.groupBy('prediction,'l,'p).count.orderBy('l.desc).show(100,false)    
 
 
 def buildTrain(ct:Int,data:org.apache.spark.sql.DataFrame):org.apache.spark.sql.DataFrame={
@@ -59,14 +67,17 @@ def buildTrain(ct:Int,data:org.apache.spark.sql.DataFrame):org.apache.spark.sql.
     
     // standardize-test
     val stdz=new StandardScaler().setInputCol("features").setOutputCol("scaledFeatures").setWithStd(true).setWithMean(false)
+    // norm
+    val normalizer = new Normalizer().setInputCol("scaledFeatures").setOutputCol("normFeatures").setP(1.0)
 
     // algo
 // val k=new KMeans().setK(ct).setFeaturesCol("features")
-    val k=new KMeans().setK(ct).setFeaturesCol("scaledFeatures")
+    val k=new KMeans().setK(ct).setFeaturesCol("normFeatures")
 
     // build a pipeline
     // val pipe=new Pipeline().setStages(Array(locationIDX,va,k))
-    val pipe=new Pipeline().setStages(Array(locationIDX,va,stdz,k))
+    // val pipe=new Pipeline().setStages(Array(locationIDX,va,stdz,k))
+    val pipe=new Pipeline().setStages(Array(locationIDX,va,normalizer,k))
     val model=pipe.fit(x3)
     val xr=model.transform(x3)
     xr
@@ -87,3 +98,46 @@ showClustersByP(buildTrain(50,x3))
 showClustersByP(buildTrain(150,x3))
 
 showRest(19,xr3000)
+
+
+
+def buildTrain2(ct:Int,data:org.apache.spark.sql.DataFrame):org.apache.spark.sql.DataFrame={
+        // l to index
+    val locationIDX = new StringIndexer().setInputCol("l").setOutputCol("lIndex")  
+    // assemble
+    val va=new VectorAssembler().setInputCols(Array("lIndex","p","r")).setOutputCol("features") 
+    
+    // standardize-test
+    // val stdz=new StandardScaler().setInputCol("features").setOutputCol("scaledFeatures").setWithStd(true).setWithMean(false)
+    // val minmax=new MinMaxScaler().setInputCol("scaledFeatures").setOutputCol("mxf")
+    val normalizer = new Normalizer().setInputCol("features").setOutputCol("normFeatures").setP(1.0)
+
+    // algo
+// val k=new KMeans().setK(ct).setFeaturesCol("features")
+    val k=new KMeans().setK(ct).setFeaturesCol("normFeatures")
+
+    // build a pipeline
+    // val pipe=new Pipeline().setStages(Array(locationIDX,va,k))
+    val pipe=new Pipeline().setStages(Array(locationIDX,va,normalizer,k))
+    val model=pipe.fit(x3)
+    val xr=model.transform(x3)
+    xr
+}
+
+val xr400=buildTrain2(400,x3)
+
+val xr1500=buildTrain2(1500,x3)
+
+showClustersByP(xr400)
+def showRest(p:Int,x:org.apache.spark.sql.DataFrame)=x.drop('features).drop('normFeatures).filter('prediction===p).orderBy('Ratings.desc).show(500,false) 
+
+showClustersByP(xr1500)
+
+showRest(19,xr400)
+showRest(116,xr1500)
+
+
+val xr2000=buildTrain2(2000,x3)
+showClustersByP(xr2000)
+showRest(116,xr2000)
+
